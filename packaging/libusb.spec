@@ -4,7 +4,7 @@ Release:        0
 License:        LGPL-2.1+
 Summary:        USB Library
 Url:            http://www.libusb.org/
-Group:          System/Libraries
+Group:          Base/Device Management
 Source:         %{name}-%{version}.tar.bz2
 Source1:        baselibs.conf
 BuildRequires:  pkg-config
@@ -14,7 +14,7 @@ Libusb is a library that allows userspace access to USB devices.
 
 %package devel
 Summary:        USB Library
-Group:          Development/Libraries/C and C++
+Group:          Development/Libraries
 Requires:       glibc-devel
 Requires:       libusb = %{version}
 
@@ -39,12 +39,11 @@ make %{?_smp_mflags}
 
 %files
 %defattr(-,root,root)
-%doc COPYING
+%license COPYING
 %{_libdir}/*.so.*
 
 %files devel
 %defattr(-,root,root)
-%doc PORTING
 %{_includedir}/libusb-1.0
 %{_libdir}/*.so
 %{_libdir}/pkgconfig/*.pc
