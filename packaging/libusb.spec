@@ -7,6 +7,7 @@ Url:            http://www.libusb.org/
 Group:          Base/Device Management
 Source:         %{name}-%{version}.tar.bz2
 Source1:        baselibs.conf
+Source1001: 	libusb.manifest
 BuildRequires:  pkg-config
 
 %description
@@ -23,6 +24,7 @@ Libusb is a library that allows userspace access to USB devices.
 
 %prep
 %setup -q
+cp %{SOURCE1001} .
 
 %build
 %configure\
@@ -38,11 +40,13 @@ make %{?_smp_mflags}
 %postun  -p /sbin/ldconfig
 
 %files
+%manifest %{name}.manifest
 %defattr(-,root,root)
 %license COPYING
 %{_libdir}/*.so.*
 
 %files devel
+%manifest %{name}.manifest
 %defattr(-,root,root)
 %{_includedir}/libusb-1.0
 %{_libdir}/*.so
