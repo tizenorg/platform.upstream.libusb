@@ -1,5 +1,5 @@
 Name:           libusb
-Version:        1.0.9
+Version:        1.0.19
 Release:        0
 License:        LGPL-2.1+
 Summary:        USB Library
@@ -9,6 +9,7 @@ Source:         %{name}-%{version}.tar.bz2
 Source1:        baselibs.conf
 Source1001: 	libusb.manifest
 BuildRequires:  pkg-config
+BuildRequires:  systemd-devel
 
 %description
 Libusb is a library that allows userspace access to USB devices.
