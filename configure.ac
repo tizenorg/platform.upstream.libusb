@@ -97,6 +97,16 @@ case $backend in
 linux)
 	AC_DEFINE(OS_LINUX, 1, [Linux backend])
 	AC_SUBST(OS_LINUX)
+	AC_ARG_ENABLE([usd],
+		[AC_HELP_STRING([--enable-usd], [Use USB security daemon to obtain dev node fds [default=no]])],
+		[], [enable_usd="no"])
+	if test "x$enable_usd" = "xyes"; then
+	   PKG_CHECK_MODULES([USD], [capi-system-usbhost-usd])
+	   AC_DEFINE(USE_USD, 1, [Use USB security daemon to obtain dev node fds])
+	fi
+
+	AC_SUBST(USE_USD)
+
 	AC_SEARCH_LIBS(clock_gettime, rt, [], [], -pthread)
 	AC_ARG_ENABLE([udev],
 		[AC_HELP_STRING([--enable-udev], [use udev for device enumeration and hotplug support (recommended) [default=yes]])],
@@ -181,6 +191,7 @@ AM_CONDITIONAL(OS_WINDOWS, test "x$backend" = xwindows)
 AM_CONDITIONAL(THREADS_POSIX, test "x$threads" = xposix)
 AM_CONDITIONAL(CREATE_IMPORT_LIB, test "x$create_import_lib" = "xyes")
 AM_CONDITIONAL(USE_UDEV, test "x$enable_udev" = xyes)
+AM_CONDITIONAL(USE_USD, test "x$enable_usd" = xyes)
 if test "$threads" = posix; then
 	AC_DEFINE(THREADS_POSIX, 1, [Use POSIX Threads])
 fi

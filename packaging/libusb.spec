@@ -10,6 +10,7 @@ Source1:        baselibs.conf
 Source1001: 	libusb.manifest
 BuildRequires:  pkg-config
 BuildRequires:  systemd-devel
+BuildRequires:  pkgconfig(capi-system-usbhost-usd)
 
 %description
 Libusb is a library that allows userspace access to USB devices.
@@ -28,9 +29,10 @@ Libusb is a library that allows userspace access to USB devices.
 cp %{SOURCE1001} .
 
 %build
-%configure\
+%reconfigure\
 	--with-pic\
-	--disable-static
+	--disable-static\
+	--enable-usd
 make %{?_smp_mflags}
 
 %install

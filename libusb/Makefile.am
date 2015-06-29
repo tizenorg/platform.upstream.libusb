@@ -73,3 +73,10 @@ libusb_1_0_la_SOURCES = libusbi.h core.c descriptor.c io.c strerror.c sync.c \
 
 hdrdir = $(includedir)/libusb-1.0
 hdr_HEADERS = libusb.h
+
+if OS_LINUX
+if USE_USD
+libusb_1_0_la_CFLAGS += $(USD_CFLAGS)
+libusb_1_0_la_LIBADD = $(USD_LIBS)
+endif
+endif

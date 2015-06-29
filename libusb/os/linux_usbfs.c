@@ -38,6 +38,11 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
+/* Tizen specific */
+#ifdef USE_USD
+#include <usb-security-daemon.h>
+#endif
+
 #include "libusb.h"
 #include "libusbi.h"
 #include "linux_usbfs.h"
@@ -179,12 +184,74 @@ struct linux_transfer_priv {
 	int iso_packet_offset;
 };
 
+static int _direct_open_device(struct libusb_context *ctx, const char *path,
+			       mode_t mode, int silent)
+{
+	int fd;
+	int delay = 10000;
+
+	fd = open(path, mode);
+	if (fd != -1)
+		return fd; /* Success */
+
+	if (errno == ENOENT) {
+		if (!silent)
+			usbi_err(ctx, "File doesn't exist,"
+				 "wait %d ms and try again\n", delay/1000);
+
+		/* Wait 10ms for USB device path creation.*/
+		usleep(delay);
+
+		fd = open(path, mode);
+		if (fd != -1)
+			return fd; /* Success */
+	}
+
+	return fd;
+}
+
+#ifdef USE_USD
+static int _ask_for_open(const char *path, mode_t mode, int silent)
+{
+	int ret;
+	int fd;
+
+	ret = usd_open_usb_device(path, &fd);
+	if (ret != USD_API_SUCCESS) {
+		/*
+		 * We have an error so let's set errno correctly
+		 * just like open does
+		 */
+		switch (ret) {
+		case USD_API_ERROR_ACCESS_DENIED:
+		case USD_API_ERROR_SOCKET:
+		case USD_API_ERROR_AUTHENTICATION_FAILED:
+			errno = EACCES;
+			break;
+
+		case USD_API_ERROR_INPUT_PARAM:
+		case USD_API_ERROR_FILE_NOT_EXIST:
+			errno = ENOENT;
+			break;
+		default:
+			errno = EINVAL;
+			break;
+		}
+
+		ret = -1;
+	} else {
+		ret = fd;
+	}
+
+	return ret;
+}
+#endif /* USE_USD */
+
 static int _get_usbfs_fd(struct libusb_device *dev, mode_t mode, int silent)
 {
 	struct libusb_context *ctx = DEVICE_CTX(dev);
 	char path[PATH_MAX];
 	int fd;
-	int delay = 10000;
 
 	if (usbdev_names)
 		snprintf(path, PATH_MAX, "%s/usbdev%d.%d",
@@ -193,22 +260,34 @@ static int _get_usbfs_fd(struct libusb_device *dev, mode_t mode, int silent)
 		snprintf(path, PATH_MAX, "%s/%03d/%03d",
 			usbfs_path, dev->bus_number, dev->device_address);
 
-	fd = open(path, mode);
+	fd = _direct_open_device(ctx, path, mode, silent);
 	if (fd != -1)
 		return fd; /* Success */
 
-	if (errno == ENOENT) {
-		if (!silent) 
-			usbi_err(ctx, "File doesn't exist, wait %d ms and try again\n", delay/1000);
-   
-		/* Wait 10ms for USB device path creation.*/
-		usleep(delay);
+#ifdef USE_USD
+	/*
+	 * If we are here, we were unable to go simple
+	 * path and open the device directly. In Tizen
+	 * we have USB security daemon (USD) which
+	 * manages access rights to USB device nodes.
+	 * Now let's ask him to open this device node
+	 * for us.
+	 */
 
-		fd = open(path, mode);
+	/*
+	 * USD is applicable only for RW access.
+	 */
+	if (mode & O_RDWR) {
+		if (!silent)
+			usbi_info(ctx, "No direct access to device node: %s. "
+				  "Trying to use USD", path);
+
+		fd = _ask_for_open(path, mode, silent);
 		if (fd != -1)
-			return fd; /* Success */
+			return fd;
 	}
-	
+#endif /* USE_USD */
+
 	if (!silent) {
 		usbi_err(ctx, "libusb couldn't open USB device %s: %s",
 			 path, strerror(errno));
