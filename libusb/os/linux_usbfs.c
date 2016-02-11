@@ -39,8 +39,8 @@
 #include <unistd.h>
 
 /* Tizen specific */
-#ifdef USE_USD
-#include <usb-security-daemon.h>
+#ifdef USE_DEVICED
+#include <dd-usbhost.h>
 #endif
 
 #include "libusb.h"
@@ -210,34 +210,19 @@ static int _direct_open_device(struct libusb_context *ctx, const char *path,
 	return fd;
 }
 
-#ifdef USE_USD
+#ifdef USE_DEVICED
 static int _ask_for_open(const char *path, mode_t mode, int silent)
 {
 	int ret;
 	int fd;
 
-	ret = usd_open_usb_device(path, &fd);
-	if (ret != USD_API_SUCCESS) {
+	ret = open_usb_device(path, &fd);
+	if (ret < 0) {
 		/*
 		 * We have an error so let's set errno correctly
 		 * just like open does
 		 */
-		switch (ret) {
-		case USD_API_ERROR_ACCESS_DENIED:
-		case USD_API_ERROR_SOCKET:
-		case USD_API_ERROR_AUTHENTICATION_FAILED:
-			errno = EACCES;
-			break;
-
-		case USD_API_ERROR_INPUT_PARAM:
-		case USD_API_ERROR_FILE_NOT_EXIST:
-			errno = ENOENT;
-			break;
-		default:
-			errno = EINVAL;
-			break;
-		}
-
+		errno= -ret;
 		ret = -1;
 	} else {
 		ret = fd;
@@ -245,7 +230,7 @@ static int _ask_for_open(const char *path, mode_t mode, int silent)
 
 	return ret;
 }
-#endif /* USE_USD */
+#endif /* USE_DEVICED */
 
 static int _get_usbfs_fd(struct libusb_device *dev, mode_t mode, int silent)
 {
@@ -264,7 +249,7 @@ static int _get_usbfs_fd(struct libusb_device *dev, mode_t mode, int silent)
 	if (fd != -1)
 		return fd; /* Success */
 
-#ifdef USE_USD
+#ifdef USE_DEVICED
 	/*
 	 * If we are here, we were unable to go simple
 	 * path and open the device directly. In Tizen
@@ -280,13 +265,13 @@ static int _get_usbfs_fd(struct libusb_device *dev, mode_t mode, int silent)
 	if (mode & O_RDWR) {
 		if (!silent)
 			usbi_info(ctx, "No direct access to device node: %s. "
-				  "Trying to use USD", path);
+				  "Trying to use deviced", path);
 
 		fd = _ask_for_open(path, mode, silent);
 		if (fd != -1)
 			return fd;
 	}
-#endif /* USE_USD */
+#endif /* USE_DEVICED */
 
 	if (!silent) {
 		usbi_err(ctx, "libusb couldn't open USB device %s: %s",
